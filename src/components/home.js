@@ -22,6 +22,7 @@ import {
   EditOutlined,
   PlusOutlined,
 } from "@ant-design/icons";
+import AddRecordModal from "./modals/addRecordModal";
 
 export default function Home() {
   const [fake, setFake] = useState(1);
@@ -31,6 +32,7 @@ export default function Home() {
 
   const [open1, setOpen1] = useState(false);
   const [open2, setOpen2] = useState(false);
+  const [open3, setOpen3] = useState(false);
 
   const [domainName, setDomainName] = useState("");
   const [callerReference, setCallerReference] = useState("");
@@ -39,6 +41,14 @@ export default function Home() {
 
   const [dNSRecords, setDNSRecords] = useState([]);
   const [selectedDNSRecords, setSelectedDNSRecords] = useState([]);
+
+  const [recordName, setRecordName] = useState("");
+  const [recordType, setRecordType] = useState("");
+  const [recordTTL, setRecordTTL] = useState("300");
+  const [recordValue, setRecordValue] = useState("");
+
+  const [changes, setChanges] = useState("");
+  const [comment2, setComment2] = useState("");
 
   const [scrollParams, updateScrollParams] = useState({
     y: window.innerHeight - 184.4,
@@ -106,9 +116,6 @@ export default function Home() {
   };
 
   const getDNSRecords = async (id) => {
-    console.log(id, {
-      hostedZoneId: id,
-    });
     try {
       const payload = {
         hostedZoneId: id,
@@ -256,7 +263,6 @@ export default function Home() {
           open={open2}
           onOpenChange={(e) => {
             const tempCRID = generateUUID();
-            console.log(tempCRID);
             setCallerReference(tempCRID);
             setOpen2(e);
           }}
@@ -340,7 +346,22 @@ export default function Home() {
               }}
             >
               Print
-            </Button>{" "}
+            </Button>
+            <Button
+              onClick={() => {
+                setOpen3(true);
+              }}
+              icon={<PlusOutlined />}
+            ></Button>
+            <AddRecordModal
+              modalOpen={open3}
+              setModalOpen={setOpen3}
+              selectedHostedZone={selectedHostedZone}
+              dNSRecords={dNSRecords}
+              afterAdd={() => {
+                getDNSRecords(selectedHostedZone.Id);
+              }}
+            />
           </div>
           <div style={{ width: "100%", flex: 1, backgroundColor: "orange" }}>
             {/* <EditOutlined /> */}
@@ -410,6 +431,7 @@ export default function Home() {
                   title: "Type",
                   dataIndex: "Type",
                   key: "Type",
+                  width: "80px",
                   render: (_, record) => <div>{record?.Type}</div>,
                 },
                 {

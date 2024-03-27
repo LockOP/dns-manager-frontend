@@ -47,3 +47,14 @@ export async function getDNSRecordsAPI(body) {
   const response = await axios(axiosoptions);
   return response.data;
 }
+
+export async function createDNSRecordAPI(body) {
+  const axiosoptions = {
+    url: `${API_ENDPOINT}/api/createDNSRecord`,
+    method: "POST",
+    data: body,
+  };
+
+  const response = await axios(axiosoptions);
+  return response.data;
+}
