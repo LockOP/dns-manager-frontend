@@ -2,10 +2,26 @@ import React, { useEffect, useState } from "react";
 import {
   createHostedZoneAPI,
   deleteHostedZoneAPI,
+  getDNSRecordsAPI,
   getHostedZonesAPI,
 } from "../services/service";
-import { Button, Divider, Dropdown, Input, Popover, Space } from "antd";
-import { CaretDownFilled, DeleteFilled, PlusOutlined } from "@ant-design/icons";
+import {
+  Button,
+  Checkbox,
+  ConfigProvider,
+  Divider,
+  Dropdown,
+  Input,
+  Popover,
+  Space,
+  Table,
+} from "antd";
+import {
+  CaretDownFilled,
+  DeleteFilled,
+  EditOutlined,
+  PlusOutlined,
+} from "@ant-design/icons";
 
 export default function Home() {
   const [fake, setFake] = useState(1);
@@ -20,6 +36,14 @@ export default function Home() {
   const [callerReference, setCallerReference] = useState("");
   const [comment, setComment] = useState("");
   const [warning, setWarning] = useState("");
+
+  const [dNSRecords, setDNSRecords] = useState([]);
+  const [selectedDNSRecords, setSelectedDNSRecords] = useState([]);
+
+  const [scrollParams, updateScrollParams] = useState({
+    y: window.innerHeight - 184.4,
+    // x: window.innerWidth - 10,
+  });
 
   function generateUUID() {
     const s4 = () =>
@@ -81,9 +105,29 @@ export default function Home() {
     }
   };
 
+  const getDNSRecords = async (id) => {
+    console.log(id, {
+      hostedZoneId: id,
+    });
+    try {
+      const payload = {
+        hostedZoneId: id,
+      };
+      const response = await getDNSRecordsAPI(payload);
+      setDNSRecords(response);
+      console.log("getDNSRecords successfull:", response);
+    } catch (e) {
+      console.log("getDNSRecords faliled:", e);
+    }
+  };
+
   useEffect(() => {
     populateHostedZones();
   }, [fake]);
+
+  useEffect(() => {
+    if (selectedHostedZone.Id) getDNSRecords(selectedHostedZone.Id);
+  }, [selectedHostedZone]);
 
   return (
     <div
@@ -290,10 +334,105 @@ export default function Home() {
           }}
         >
           <div style={{ width: "100%", height: "max-content" }}>
-            table header
+            <Button
+              onClick={() => {
+                console.log(selectedDNSRecords);
+              }}
+            >
+              Print
+            </Button>{" "}
           </div>
           <div style={{ width: "100%", flex: 1, backgroundColor: "orange" }}>
-            table
+            {/* <EditOutlined /> */}
+            <Table
+              scroll={scrollParams}
+              columns={[
+                {
+                  width: "40px",
+                  key: "checkbox",
+                  render: (_, record) => (
+                    <ConfigProvider
+                      theme={{
+                        token: {
+                          colorBorder: "#1677ff",
+                        },
+                      }}
+                    >
+                      <Checkbox
+                        checked={selectedDNSRecords.some(
+                          (objs) =>
+                            objs.Name === record.Name &&
+                            objs.Type === record.Type
+                        )}
+                        onClick={(e) => {
+                          if (
+                            selectedDNSRecords.some(
+                              (objs) =>
+                                objs.Name === record.Name &&
+                                objs.Type === record.Type
+                            )
+                          ) {
+                            setSelectedDNSRecords((cur) =>
+                              cur.filter((item) => {
+                                if (
+                                  item.Name === record.Name &&
+                                  item.Type === record.Type
+                                ) {
+                                } else {
+                                  return item;
+                                }
+                              })
+                            );
+                          } else {
+                            setSelectedDNSRecords((cur) => [...cur, record]);
+                          }
+                        }}
+                      />
+                    </ConfigProvider>
+                  ),
+                },
+                {
+                  width: "40px",
+                  key: "checkbox",
+                  render: (_, record) => (
+                    <a>
+                      <EditOutlined />
+                    </a>
+                  ),
+                },
+                {
+                  title: "Name",
+                  dataIndex: "Name",
+                  key: "Name",
+                  render: (_, record) => <div>{record?.Name}</div>,
+                },
+                {
+                  title: "Type",
+                  dataIndex: "Type",
+                  key: "Type",
+                  render: (_, record) => <div>{record?.Type}</div>,
+                },
+                {
+                  title: "Values",
+                  dataIndex: "ResourceRecords",
+                  key: "ResourceRecords",
+                  render: (_, record) => (
+                    <div style={{ display: "flex", flexDirection: "column" }}>
+                      {record?.ResourceRecords.map((item, ind) => {
+                        return <div>{item?.Value}</div>;
+                      })}
+                    </div>
+                  ),
+                },
+                {
+                  title: "TTL",
+                  dataIndex: "TTL",
+                  key: "TTL",
+                  render: (_, record) => <div>{record?.TTL}</div>,
+                },
+              ]}
+              dataSource={dNSRecords}
+            />
           </div>
         </div>
       </div>
