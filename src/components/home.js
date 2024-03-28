@@ -215,7 +215,7 @@ export default function Home() {
           gap: "10px",
           padding: "10px",
           boxSizing: "border-box",
-          alignItems:"center",
+          alignItems: "center",
           borderBottom: "1px solid grey",
         }}
       >
@@ -434,7 +434,7 @@ export default function Home() {
               yField="value"
               colorField="type"
               legend={{
-                color: { autoWrap: true, maxRows: 3, cols: 6 },
+                color: { size: 72, autoWrap: true, maxRows: 3, cols: 6 },
               }}
               data={dNSRecordsTypeData}
             />
