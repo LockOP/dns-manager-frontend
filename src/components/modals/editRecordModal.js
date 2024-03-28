@@ -1,5 +1,5 @@
 import { Button, Dropdown, Input, Modal } from "antd";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   isValidIPv4,
   isValidCNAME,
@@ -12,28 +12,19 @@ import {
   isValidDS,
 } from "../formatAuths";
 import { CaretDownFilled } from "@ant-design/icons";
-import { createDNSRecordAPI } from "../../services/service";
+import { createDNSRecordAPI, updateDNSRecordAPI } from "../../services/service";
 
-export default function AddRecordModal({
+export default function EditRecordModal({
   modalOpen,
   setModalOpen,
   selectedHostedZone,
-  dNSRecords,
+  selectedDNSRecords,
   afterAdd,
 }) {
   const [recordName, setRecordName] = useState("");
-  const [recordType, setRecordType] = useState({
-    label: "A",
-    key: "A",
-    subReq: false,
-    authFunc: isValidIPv4,
-    eg: "192.0.2.146",
-  });
+  const [recordType, setRecordType] = useState({});
   const [recordTTL, setRecordTTL] = useState("300");
   const [recordValue, setRecordValue] = useState("");
-
-  const [changes, setChanges] = useState("");
-  const [comment2, setComment2] = useState("");
 
   const [warning, setWarning] = useState("");
 
@@ -103,51 +94,31 @@ export default function AddRecordModal({
     },
   ];
 
-  const createDNSRecord = async (payload) => {
+  const updateDNSRecord = async (payload) => {
     try {
-      const response = await createDNSRecordAPI(payload);
+      const response = await updateDNSRecordAPI(payload);
       afterAdd();
-      console.log("createDNSRecord successfull:", response);
+      console.log("updateDNSRecord successfull:", response);
     } catch (e) {
-      console.log("createDNSRecord faliled:", e);
+      console.log("updateDNSRecord faliled:", e);
     }
   };
 
-  const prepareBodyWithAuth = (
-    subname,
-    type,
-    value,
-    ttl,
-    hz,
-    authFun,
-    subReq,
-    dname
-  ) => {
+  const prepareBodyWithAuth = (name, type, value, ttl, hz, authFun) => {
     let wM = "";
 
-    const Name = subname + `${subname !== "" ? "." : ""}` + dname;
-    const NameValidity = subReq ? (subname !== "" ? true : false) : true;
+    const Name = name;
     const ValueValidity =
       value !== "" ? (authFun(value) ? true : false) : false;
 
-    const NameAndTypeUniqueValidity = !dNSRecords.some(
-      (objs) => objs.Name === Name && objs.Type === type
-    );
-
-    if (!NameValidity) {
-      wM += "Sub Domain can't be empty; ";
-    }
     if (!ValueValidity) {
       wM += "Invalid/Empty Value Format; ";
-    }
-    if (!NameAndTypeUniqueValidity) {
-      wM += "Selected - (Domain Name + Type) already exists; ";
     }
 
     const payload = {
       changes: [
         {
-          Action: "CREATE",
+          Action: "UPSERT",
           ResourceRecordSet: {
             Name: Name,
             ResourceRecords: [
@@ -170,11 +141,35 @@ export default function AddRecordModal({
     };
   };
 
+  useEffect(() => {
+    if (selectedDNSRecords.length === 1) {
+      const selected = selectedDNSRecords[0];
+
+      setRecordName(selected.Name);
+      const matchingObj = typeOptions.find((obj) => obj.key === selected.Type);
+      setRecordType(matchingObj);
+      setRecordValue(selected.ResourceRecords[0].Value);
+      setRecordTTL(selected.TTL);
+      console.log("selected", matchingObj);
+    } else {
+      setRecordName("");
+      setRecordType({
+        label: "",
+        key: "",
+        subReq: false,
+        authFunc: () => {},
+        eg: "",
+      });
+      setRecordTTL("");
+    }
+  }, [selectedDNSRecords]);
+
   return (
     <Modal
-      title={<div>Create DNS Record</div>}
+      title={<div>Edit DNS Record</div>}
       open={modalOpen}
-      onCancel={() => {
+      onCancel={(e) => {
+        console.log(e);
         setModalOpen(false);
       }}
       footer={<></>}
@@ -189,70 +184,17 @@ export default function AddRecordModal({
         }}
       >
         <div style={{ display: "flex", flexDirection: "column" }}>
-          <div>
-            Sub Domain Name {recordType.subReq ? "(Required)" : "(Otional)"}
-          </div>
-          <Input
-            status={recordType.subReq ? "warning" : undefined}
-            placeholder={
-              recordType.subReq ? "Sub Domain can't be empty" : "optional"
-            }
-            style={{ width: "100%" }}
-            value={recordName}
-            onChange={(e) => {
-              setRecordName(e.target.value);
-            }}
-          />
-        </div>
-
-        <div style={{ display: "flex", flexDirection: "column" }}>
           <div>Domain Name</div>
-          <Input
-            disabled
-            placeholder="sub-domain"
-            style={{ width: "100%" }}
-            value={
-              recordName +
-              `${recordName !== "" ? "." : ""}` +
-              selectedHostedZone.Name
-            }
-          />
-        </div>
-
+          <Input disabled style={{ width: "100%" }} value={recordName} />
+        </div>{" "}
         <div style={{ display: "flex", flexDirection: "column" }}>
-          <div>Type (Required)</div>
-          <Dropdown
-            menu={{
-              items: typeOptions.map((item) => {
-                return { label: item.label, key: item.key };
-              }),
-              selectable: true,
-              multiple: false,
-              defaultSelectedKeys: ["A"],
-
-              onSelect: (e) => {
-                const findByKey = typeOptions.find((obj) => obj.key === e.key);
-                setRecordType(findByKey);
-              },
-            }}
-            trigger={["click"]}
-          >
-            <Button
-              icon={<CaretDownFilled />}
-              style={{
-                width: "100%",
-                textAlign: "left",
-              }}
-            >
-              {recordType.key}
-            </Button>
-          </Dropdown>
+          <div>Type</div>
+          <Input disabled style={{ width: "100%" }} value={recordType.key} />
         </div>
-
         <div style={{ display: "flex", flexDirection: "column" }}>
           <div>
             Value
-            {recordValue !== ""
+            {recordValue !== "" && Object.keys(recordType).length
               ? recordType.authFunc(recordValue)
                 ? undefined
                 : ` (not a valid ${recordType.key} DNS Record value)`
@@ -260,7 +202,7 @@ export default function AddRecordModal({
           </div>
           <Input
             status={
-              recordValue !== ""
+              recordValue !== "" && Object.keys(recordType).length
                 ? recordType.authFunc(recordValue)
                   ? undefined
                   : "error"
@@ -274,7 +216,6 @@ export default function AddRecordModal({
             }}
           />
         </div>
-
         <div style={{ display: "flex", flexDirection: "column" }}>
           <div>TTL (Required)</div>
           <Input
@@ -287,7 +228,6 @@ export default function AddRecordModal({
             }}
           />
         </div>
-
         <div style={{ color: "red", fontSize: "12px" }}>{warning} </div>
         <div
           style={{
@@ -304,18 +244,13 @@ export default function AddRecordModal({
                 recordValue,
                 recordTTL,
                 selectedHostedZone.Id,
-                recordType.authFunc,
-                recordType.subReq,
-                selectedHostedZone.Name
+                recordType.authFunc
               );
               if (check.wM !== "") {
                 setWarning(check.wM);
               } else {
                 setWarning("");
-                createDNSRecord(check.payload);
-                setRecordName("");
-                setRecordValue("");
-                setRecordTTL("300");
+                updateDNSRecord(check.payload);
               }
               setModalOpen(false);
             }}

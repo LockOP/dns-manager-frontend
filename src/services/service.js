@@ -58,3 +58,25 @@ export async function createDNSRecordAPI(body) {
   const response = await axios(axiosoptions);
   return response.data;
 }
+
+export async function deleteDNSRecordAPI(body) {
+  const axiosoptions = {
+    url: `${API_ENDPOINT}/api/deleteDNSRecord`,
+    method: "POST",
+    data: body,
+  };
+
+  const response = await axios(axiosoptions);
+  return response.data;
+}
+
+export async function updateDNSRecordAPI(body) {
+  const axiosoptions = {
+    url: `${API_ENDPOINT}/api/updateDNSRecord`,
+    method: "POST",
+    data: body,
+  };
+
+  const response = await axios(axiosoptions);
+  return response.data;
+}

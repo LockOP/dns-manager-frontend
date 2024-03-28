@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import {
   createHostedZoneAPI,
+  deleteDNSRecordAPI,
   deleteHostedZoneAPI,
   getDNSRecordsAPI,
   getHostedZonesAPI,
@@ -23,6 +24,7 @@ import {
   PlusOutlined,
 } from "@ant-design/icons";
 import AddRecordModal from "./modals/addRecordModal";
+import EditRecordModal from "./modals/editRecordModal";
 
 export default function Home() {
   const [fake, setFake] = useState(1);
@@ -33,6 +35,14 @@ export default function Home() {
   const [open1, setOpen1] = useState(false);
   const [open2, setOpen2] = useState(false);
   const [open3, setOpen3] = useState(false);
+  const [open4, setOpen4] = useState(false);
+  const [open5, setOpen5] = useState(false);
+
+  const [specialOpen, setSpecialOpen] = useState(false);
+  const [specialOpen2, setSpecialOpen2] = useState({
+    Name: "",
+    Type: "",
+  });
 
   const [domainName, setDomainName] = useState("");
   const [callerReference, setCallerReference] = useState("");
@@ -41,14 +51,6 @@ export default function Home() {
 
   const [dNSRecords, setDNSRecords] = useState([]);
   const [selectedDNSRecords, setSelectedDNSRecords] = useState([]);
-
-  const [recordName, setRecordName] = useState("");
-  const [recordType, setRecordType] = useState("");
-  const [recordTTL, setRecordTTL] = useState("300");
-  const [recordValue, setRecordValue] = useState("");
-
-  const [changes, setChanges] = useState("");
-  const [comment2, setComment2] = useState("");
 
   const [scrollParams, updateScrollParams] = useState({
     y: window.innerHeight - 184.4,
@@ -125,6 +127,32 @@ export default function Home() {
       console.log("getDNSRecords successfull:", response);
     } catch (e) {
       console.log("getDNSRecords faliled:", e);
+    }
+  };
+
+  const deleteDNSRecord = async (selArr, id) => {
+    try {
+      const changes = selArr.map((item) => {
+        return {
+          Action: "DELETE",
+          ResourceRecordSet: {
+            Name: item.Name,
+            ResourceRecords: item.ResourceRecords,
+            TTL: item.TTL,
+            Type: item.Type,
+          },
+        };
+      });
+      const payload = {
+        changes: changes,
+        comment: "",
+        hostedZoneId: id,
+      };
+      const response = await deleteDNSRecordAPI(payload);
+      getDNSRecords(selectedHostedZone.Id);
+      console.log("deleteDNSRecord successfull:", response);
+    } catch (e) {
+      console.log("deleteDNSRecord faliled:", e);
     }
   };
 
@@ -353,6 +381,53 @@ export default function Home() {
               }}
               icon={<PlusOutlined />}
             ></Button>
+            <Popover
+              content={
+                <div>
+                  <div style={{ paddingBottom: "10px", fontWeight: "bold" }}>
+                    {"Delete " +
+                      selectedDNSRecords.length.toString() +
+                      " selected DNS Records."}
+                  </div>
+                  <div
+                    style={{
+                      display: "flex",
+                      flexDirection: "row",
+                      gap: "10px",
+                    }}
+                  >
+                    <Button
+                      onClick={() => {
+                        deleteDNSRecord(
+                          selectedDNSRecords,
+                          selectedHostedZone.Id
+                        );
+                        setSelectedDNSRecords([]);
+                        setOpen4(false);
+                      }}
+                      danger
+                    >
+                      Delete
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        setOpen4(false);
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              }
+              title="Confirm Delete"
+              trigger="click"
+              open={open4}
+              onOpenChange={(e) => {
+                setOpen4(e);
+              }}
+            >
+              <Button icon={<DeleteFilled />} danger></Button>
+            </Popover>
             <AddRecordModal
               modalOpen={open3}
               setModalOpen={setOpen3}
@@ -360,6 +435,24 @@ export default function Home() {
               dNSRecords={dNSRecords}
               afterAdd={() => {
                 getDNSRecords(selectedHostedZone.Id);
+                setSelectedDNSRecords([]);
+              }}
+            />
+            <Button
+              disabled={selectedDNSRecords.length !== 1}
+              onClick={() => {
+                setOpen5(true);
+              }}
+              icon={<EditOutlined />}
+            ></Button>
+            <EditRecordModal
+              modalOpen={open5}
+              setModalOpen={setOpen5}
+              selectedHostedZone={selectedHostedZone}
+              selectedDNSRecords={selectedDNSRecords}
+              afterAdd={() => {
+                getDNSRecords(selectedHostedZone.Id);
+                setSelectedDNSRecords([]);
               }}
             />
           </div>
@@ -371,55 +464,51 @@ export default function Home() {
                 {
                   width: "40px",
                   key: "checkbox",
-                  render: (_, record) => (
-                    <ConfigProvider
-                      theme={{
-                        token: {
-                          colorBorder: "#1677ff",
-                        },
-                      }}
-                    >
-                      <Checkbox
-                        checked={selectedDNSRecords.some(
-                          (objs) =>
-                            objs.Name === record.Name &&
-                            objs.Type === record.Type
-                        )}
-                        onClick={(e) => {
-                          if (
-                            selectedDNSRecords.some(
-                              (objs) =>
-                                objs.Name === record.Name &&
-                                objs.Type === record.Type
-                            )
-                          ) {
-                            setSelectedDNSRecords((cur) =>
-                              cur.filter((item) => {
-                                if (
-                                  item.Name === record.Name &&
-                                  item.Type === record.Type
-                                ) {
-                                } else {
-                                  return item;
-                                }
-                              })
-                            );
-                          } else {
-                            setSelectedDNSRecords((cur) => [...cur, record]);
-                          }
+                  render: (_, record) =>
+                    record.Type === "SOA" ||
+                    (record.Type === "NS" &&
+                      record.Name === selectedHostedZone.Name) ? (
+                      <></>
+                    ) : (
+                      <ConfigProvider
+                        theme={{
+                          token: {
+                            colorBorder: "#1677ff",
+                          },
                         }}
-                      />
-                    </ConfigProvider>
-                  ),
-                },
-                {
-                  width: "40px",
-                  key: "checkbox",
-                  render: (_, record) => (
-                    <a>
-                      <EditOutlined />
-                    </a>
-                  ),
+                      >
+                        <Checkbox
+                          checked={selectedDNSRecords.some(
+                            (objs) =>
+                              objs.Name === record.Name &&
+                              objs.Type === record.Type
+                          )}
+                          onClick={(e) => {
+                            if (
+                              selectedDNSRecords.some(
+                                (objs) =>
+                                  objs.Name === record.Name &&
+                                  objs.Type === record.Type
+                              )
+                            ) {
+                              setSelectedDNSRecords((cur) =>
+                                cur.filter((item) => {
+                                  if (
+                                    item.Name === record.Name &&
+                                    item.Type === record.Type
+                                  ) {
+                                  } else {
+                                    return item;
+                                  }
+                                })
+                              );
+                            } else {
+                              setSelectedDNSRecords((cur) => [...cur, record]);
+                            }
+                          }}
+                        />
+                      </ConfigProvider>
+                    ),
                 },
                 {
                   title: "Name",
@@ -453,6 +542,7 @@ export default function Home() {
                   render: (_, record) => <div>{record?.TTL}</div>,
                 },
               ]}
+              pagination={false}
               dataSource={dNSRecords}
             />
           </div>
